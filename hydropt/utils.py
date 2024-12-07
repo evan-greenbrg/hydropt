@@ -1,7 +1,7 @@
 import warnings
 import itertools
 import numpy as np
-from numpy.lib.index_tricks import ndindex
+from numpy import ndindex
 from xarray import Dataset
 
 def apply_along_axis(func1d, axis, arr, progress_bar=None, *args, **kwargs):
@@ -60,7 +60,7 @@ def interpolate_to_wavebands(data, wavelength, index='wavelength'):
         .interpolate()\
         .reindex(wavelength)
 
-    warnings.warn('changed interpolation method')
+    # warnings.warn('changed interpolation method')
 
     return data
 
@@ -92,7 +92,7 @@ def der_2d_polynomial(x, c, p):
     
     return dx
 
-def recurse(x, f_args=np.nan):
+def recurse(x,  wavebands, f_args=[1, 1, 1]):
     
     def inner(x):
         n = []
@@ -101,7 +101,7 @@ def recurse(x, f_args=np.nan):
 
         for v in x:
             if callable(v):
-                out = inner(v(f_args))
+                out = inner(v(*f_args, wb=wavebands))
                 n.append(out)
             else:
                 raise ValueError('models should return np.array')

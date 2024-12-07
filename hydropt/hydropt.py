@@ -16,7 +16,7 @@ PACE_POLYNOM_04_H2O = pd.read_csv(PACE_POLYNOM_04_H2O_STREAM, index_col=0)
 def check_iop_dims(wavebands, **kwargs):
     try:
         # gather model outputs
-        array_shape = recurse(kwargs.values()).shape
+        array_shape = recurse(kwargs.values(), wavebands).shape
     except ValueError as exp:
         raise ValueError('IOP model dimension do not match. {}'.format(exp))
     
@@ -79,9 +79,24 @@ class BioOpticalModel:
             self.gradient.update({k: v(None)[1] for (k, v) in kwargs.items()})
 
     def get_iop(self, **kwargs):
+        # Sort inputs
+        sorted_kwargs = {}
+        for k, value in kwargs.items():
+            if isinstance(value, list):
+                sorted_kwargs[k] = value
+            cat = k.split('_')[0]
+            if not sorted_kwargs.get(cat):
+                sorted_kwargs[cat] = [value]
+            else:
+                sorted_kwargs[cat].append(value)
+        kwargs = sorted_kwargs
+
         iops = []
         for k, value in kwargs.items():
-            iops.append([self.iop_model.get(k)(value)])
+            if isinstance(value, list):
+                iops.append([self.iop_model.get(k)(*value, wb=self.wavebands)])
+            else:
+                iops.append([self.iop_model.get(k)(value, wb=self.wavebands)])
         
         iops = np.vstack(iops)
         
@@ -99,11 +114,21 @@ class BioOpticalModel:
     def sum_iop(self, incl_water=True, **kwargs):
         if incl_water:
             kwargs.update({'water': None})
-        iops = self.get_iop(**kwargs).sum(axis=0)
+        iops = self.get_iop(**kwargs,).sum(axis=0)
         
         return iops
     
     def plot(self, **kwargs):
+        # Sort kwargs
+        sorted_kwargs = {}
+        for k, value in kwargs.items():
+            cat = k.split('_')[0]
+            if not sorted_kwargs.get(cat):
+                sorted_kwargs[cat] = [value]
+            else:
+                sorted_kwargs[cat].append(value)
+        kwargs = sorted_kwargs
+
         n = len(kwargs)
         _, axs = plt.subplots(1,n, figsize=(14, 4))
         # to do: clean-up loop code
